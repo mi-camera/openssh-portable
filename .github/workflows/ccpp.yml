@@ -32,20 +32,46 @@ jobs:
     - name: Install ARM cross compiler
       run: sudo apt-get -y install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
 
+    - name: Get uClibc toolchain
+      uses: i3h/download-release-asset@v1
+      with:
+        owner: telmomarques
+        repo: uClibc-toolchain
+        tag: latest
+        file: toolchain.tar
+
+    - name: Install uClibc ARM cross compiler
+      run: tar -xf toolchain.tar
+
     - name: Install dependencies
       run: sudo apt-get install zlib1g-dev:armhf
 
-    - name: Configure
+    - name: Configure libc
       run: autoreconf && CC="arm-linux-gnueabihf-gcc" ./configure --without-openssl --host=arm --with-ldflags="-static"
 
-    - name: Compile
+    - name: Compile libc
       run: make sftp-server
+
+    - name: Copy libc executable
+      run: mkdir -p bin/libc && cp sftp-server bin/libc/
+
+    - name: Configure uClibc
+      run: make clean && autoreconf && CC="output/host/bin/arm-buildroot-linux-uclibcgnueabihf-gcc" ./configure --without-openssl --host=arm --with-ldflags="-static"
+
+    - name: Compile uClibc
+      run: make sftp-server
+
+    - name: Copy uClibc executable
+      run: mkdir -p bin/uclibc && cp sftp-server bin/uclibc/
+
+    - name: Package binaries
+      run: cd bin && tar -cvf sftp-server.tar *
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v1
       with:
         name: sftp-server
-        path: sftp-server
+        path: bin/sftp-server.tar
 
     - name: Release (pre-release)
       if: env.isReleaseCandidate == 'true'
@@ -53,7 +79,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         prerelease: true
-        artifacts: sftp-server
+        artifacts: bin/sftp-server.tar
         
     - name: Update latest-rc tag
       if: env.isReleaseCandidate == 'true'
@@ -64,14 +90,14 @@ jobs:
         allowUpdates: true
         replacesArtifacts: true
         prerelease: true
-        artifacts: sftp-server
+        artifacts: bin/sftp-server.tar
 
     - name: Release (final)
       if: env.isFinalRelease == 'true'
       uses: ncipollo/release-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: sftp-server
+        artifacts: bin/sftp-server.tar
         
     - name: Update latest tag
       if: env.isFinalRelease == 'true'
@@ -81,4 +107,4 @@ jobs:
         tag: latest
         allowUpdates: true
         replacesArtifacts: true
-        artifacts: sftp-server
+        artifacts: bin/sftp-server.tar
