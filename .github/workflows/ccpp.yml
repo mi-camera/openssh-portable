@@ -56,7 +56,7 @@ jobs:
       run: mkdir -p bin/libc && cp sftp-server bin/libc/
 
     - name: Configure uClibc
-      run: make clean && autoreconf && CC="output/host/bin/arm-buildroot-linux-uclibcgnueabihf-gcc" ./configure --without-openssl --without-hardening --host=arm --with-ldflags="-static"
+      run: make clean && autoreconf && CC="$GITHUB_WORKSPACE/output/host/bin/arm-buildroot-linux-uclibcgnueabihf-gcc" ./configure --without-openssl --without-hardening --host=arm --with-ldflags="-static"
 
     - name: Compile uClibc
       run: make sftp-server
